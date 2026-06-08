@@ -46,3 +46,20 @@ Environment variables:
 - `DRW_PROVIDER`: defaults to `fake`; `codex` is opt-in and requires Codex CLI auth.
 
 This milestone does not include VPS deploy, Docker, database, artifacts, or runtime workers.
+
+## Milestone 4
+
+Milestone 4 adds a local-only runtime skeleton and filesystem artifact store.
+
+Runtime behavior:
+
+- Executes validated workflow steps in dependency order.
+- Writes each successful step output as JSON under the artifact directory.
+- Marks downstream steps as `skipped` when a dependency fails or is skipped.
+- Uses deterministic fake handlers only; no real Codex, Docker, VPS, database, queues, or remote storage.
+
+Run and persist local artifacts:
+
+```bash
+drw --run --artifact-dir .drw-artifacts "pesquise frameworks python de observabilidade"
+```
