@@ -38,7 +38,19 @@ def test_build_provider_accepts_fake():
 
 
 def test_build_provider_accepts_codex_without_running_it():
-    assert isinstance(build_provider("codex"), CodexProvider)
+    provider = build_provider("codex")
+
+    assert isinstance(provider, CodexProvider)
+    assert provider._timeout_seconds == 300
+
+
+def test_build_provider_uses_configured_codex_timeout(monkeypatch):
+    monkeypatch.setenv("DRW_CODEX_TIMEOUT_SECONDS", "420")
+
+    provider = build_provider("codex")
+
+    assert isinstance(provider, CodexProvider)
+    assert provider._timeout_seconds == 420
 
 
 def test_build_provider_rejects_unknown_provider():
@@ -120,6 +132,21 @@ def test_mcp_lists_and_reads_run_artifacts(tmp_path):
     assert artifact["artifact"]["step_id"] == "research"
 
 
+def test_run_workflow_writes_generated_step_content(tmp_path):
+    payload = run_workflow(
+        "pesquise frameworks python de observabilidade",
+        artifact_dir=str(tmp_path),
+    )
+    run_id = payload["run"]["run_id"]
+
+    artifact = read_artifact(run_id, "research", artifact_dir=str(tmp_path))
+
+    assert artifact["status"] == "ok"
+    assert artifact["artifact"]["content"]
+    assert artifact["artifact"]["findings"]
+    assert artifact["artifact"]["next_actions"]
+
+
 def test_get_run_returns_error_when_run_is_missing(tmp_path):
     payload = get_run("missing-run", artifact_dir=str(tmp_path))
 
@@ -141,6 +168,7 @@ def test_get_runtime_status_returns_config_and_storage_health(tmp_path, monkeypa
         "artifact_dir": str(tmp_path),
         "mcp_host": "127.0.0.1",
         "mcp_port": 8765,
+        "codex_timeout_seconds": 300,
         "storage": "ok",
     }
 
