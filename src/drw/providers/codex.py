@@ -27,8 +27,20 @@ class CodexProvider:
         prompt = _build_prompt(goal, template)
         with TemporaryDirectory(prefix="drw-codex-") as tmp_dir:
             output_path = Path(tmp_dir) / "last-message.json"
+            schema_path = Path(tmp_dir) / "workflow-schema.json"
+            schema_path.write_text(
+                json.dumps(Workflow.model_json_schema()),
+                encoding="utf-8",
+            )
             result = self._runner.run(
-                [*self._command, "--output-last-message", str(output_path), prompt],
+                [
+                    *self._command,
+                    "--output-schema",
+                    str(schema_path),
+                    "--output-last-message",
+                    str(output_path),
+                    prompt,
+                ],
                 timeout_seconds=self._timeout_seconds,
             )
             raw_output = output_path.read_text(encoding="utf-8") or result.stdout

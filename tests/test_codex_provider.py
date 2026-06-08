@@ -43,6 +43,7 @@ def test_codex_provider_adapts_template_from_valid_json():
     assert runner.calls[0]["args"][0] == "codex"
     assert "--skip-git-repo-check" in runner.calls[0]["args"]
     assert "--output-last-message" in runner.calls[0]["args"]
+    assert "--output-schema" in runner.calls[0]["args"]
     assert runner.calls[0]["timeout_seconds"] == 60
 
 
