@@ -12,6 +12,10 @@ class FakeRunner:
 
     def run(self, args, timeout_seconds):
         self.calls.append({"args": list(args), "timeout_seconds": timeout_seconds})
+        if "--output-last-message" in args:
+            output_path = args[args.index("--output-last-message") + 1]
+            with open(output_path, "w", encoding="utf-8") as output_file:
+                output_file.write(self.result.stdout)
         return self.result
 
 
@@ -37,6 +41,8 @@ def test_codex_provider_adapts_template_from_valid_json():
     assert workflow.objective == "pesquise frameworks python de observabilidade"
     assert workflow.steps[0].type == "parallel_research"
     assert runner.calls[0]["args"][0] == "codex"
+    assert "--skip-git-repo-check" in runner.calls[0]["args"]
+    assert "--output-last-message" in runner.calls[0]["args"]
     assert runner.calls[0]["timeout_seconds"] == 60
 
 

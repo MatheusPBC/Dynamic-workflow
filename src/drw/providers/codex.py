@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from pydantic import ValidationError
 
@@ -14,7 +16,7 @@ class CodexProvider:
     def __init__(
         self,
         runner: SubprocessCommandRunner | None = None,
-        command: tuple[str, ...] = ("codex", "exec"),
+        command: tuple[str, ...] = ("codex", "exec", "--skip-git-repo-check"),
         timeout_seconds: int = 60,
     ) -> None:
         self._runner = runner or SubprocessCommandRunner()
@@ -23,10 +25,15 @@ class CodexProvider:
 
     def adapt_template(self, goal: str, template: Workflow) -> Workflow:
         prompt = _build_prompt(goal, template)
-        result = self._runner.run(
-            [*self._command, prompt], timeout_seconds=self._timeout_seconds
-        )
-        return _parse_workflow(result.stdout)
+        with TemporaryDirectory(prefix="drw-codex-") as tmp_dir:
+            output_path = Path(tmp_dir) / "last-message.json"
+            result = self._runner.run(
+                [*self._command, "--output-last-message", str(output_path), prompt],
+                timeout_seconds=self._timeout_seconds,
+            )
+            raw_output = output_path.read_text(encoding="utf-8") or result.stdout
+
+        return _parse_workflow(raw_output)
 
 
 def _build_prompt(goal: str, template: Workflow) -> str:
