@@ -63,3 +63,14 @@ Run and persist local artifacts:
 ```bash
 drw --run --artifact-dir .drw-artifacts "pesquise frameworks python de observabilidade"
 ```
+
+## Milestone 5
+
+Milestone 5 connects the local runtime to the MCP server.
+
+New MCP tool:
+
+- `run_workflow`: generates a workflow for a goal, runs it locally, and returns the run result.
+
+The tool accepts an `artifact_dir` parameter and writes successful step outputs as local JSON files.
+It defaults to the fake provider and does not call real Codex, Docker, VPS, database, queues, or remote storage.
