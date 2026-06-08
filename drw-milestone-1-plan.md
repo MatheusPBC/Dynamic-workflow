@@ -94,9 +94,6 @@ dev = [
   "ruff>=0.8.0"
 ]
 
-[project.scripts]
-drw = "drw.cli:main"
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -227,19 +224,19 @@ StepType = Literal[
 class RetryPolicy(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    max_attempts: int = Field(default=2, ge=1, le=5)
-    backoff_seconds: float = Field(default=1.0, ge=0.0, le=60.0)
+    max_attempts: int = Field(default=2, ge=1, le=3)
+    backoff_seconds: float = Field(default=1.0, ge=0.0, le=30.0)
 
 
 class WorkflowPolicy(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    max_workers: int = Field(default=12, ge=1, le=100)
-    max_parallel_workers: int = Field(default=4, ge=1, le=20)
-    max_runtime_minutes: int = Field(default=20, ge=1, le=240)
-    max_artifacts: int = Field(default=50, ge=1, le=1000)
-    max_cli_invocations: int = Field(default=6, ge=0, le=100)
-    max_refinement_rounds: int = Field(default=1, ge=0, le=10)
+    max_workers: int = Field(default=12, ge=1, le=25)
+    max_parallel_workers: int = Field(default=4, ge=1, le=8)
+    max_runtime_minutes: int = Field(default=20, ge=1, le=60)
+    max_artifacts: int = Field(default=50, ge=1, le=100)
+    max_cli_invocations: int = Field(default=6, ge=0, le=10)
+    max_refinement_rounds: int = Field(default=1, ge=0, le=3)
     max_estimated_cost: float = Field(default=0.0, ge=0.0)
 
 
@@ -250,8 +247,8 @@ class Step(BaseModel):
     type: StepType
     config: dict[str, Any] = Field(default_factory=dict)
     depends_on: list[str] = Field(default_factory=list)
-    concurrency: int = Field(default=1, ge=1, le=100)
-    timeout_seconds: int = Field(default=120, ge=1, le=3600)
+    concurrency: int = Field(default=1, ge=1, le=8)
+    timeout_seconds: int = Field(default=120, ge=1, le=900)
     retry_policy: RetryPolicy = Field(default_factory=RetryPolicy)
 
 
@@ -578,33 +575,36 @@ Expected: PASS.
 **Files:**
 - Create: `src/drw/providers/base.py`
 - Create: `src/drw/providers/fake.py`
-- Test: `tests/test_generator.py`
+- Test: `tests/test_provider.py`
 
-- [ ] **Step 1: Write failing provider/generator contract test**
+- [ ] **Step 1: Write failing provider contract test**
 
-Create `tests/test_generator.py`:
+Create `tests/test_provider.py`:
 
 ```python
-from drw.generator import WorkflowGenerator
 from drw.providers.fake import FakeLLMProvider
+from drw.templates import WorkflowTemplateName, get_template
 
 
-def test_generator_returns_valid_workflow_for_observability_goal():
-    generator = WorkflowGenerator(provider=FakeLLMProvider())
+def test_fake_provider_adapts_template_objective_without_mutating_original():
+    template = get_template(WorkflowTemplateName.RESEARCH)
+    provider = FakeLLMProvider()
 
-    workflow = generator.generate("pesquise frameworks python de observabilidade")
+    workflow = provider.adapt_template(
+        "pesquise frameworks python de observabilidade",
+        template,
+    )
 
-    assert workflow.name == "research_workflow"
     assert workflow.objective == "pesquise frameworks python de observabilidade"
+    assert template.objective == "research objective"
     assert workflow.steps[0].type == "parallel_research"
-    assert workflow.steps[-1].type == "report"
 ```
 
 - [ ] **Step 2: Run tests to verify failure**
 
-Run: `pytest tests/test_generator.py -v`
+Run: `pytest tests/test_provider.py -v`
 
-Expected: FAIL because generator/provider modules do not exist yet.
+Expected: FAIL because provider modules do not exist yet.
 
 - [ ] **Step 3: Implement provider protocol**
 
@@ -634,6 +634,12 @@ class FakeLLMProvider:
         return template.model_copy(update={"objective": goal}, deep=True)
 ```
 
+- [ ] **Step 5: Run provider tests**
+
+Run: `pytest tests/test_provider.py -v`
+
+Expected: PASS.
+
 ### Task 7: Workflow Generator And Validation
 
 **Files:**
@@ -641,7 +647,33 @@ class FakeLLMProvider:
 - Create: `src/drw/validation.py`
 - Modify: `tests/test_generator.py`
 
-- [ ] **Step 1: Extend generator tests for policy clamping**
+- [ ] **Step 1: Write failing generator contract test**
+
+Create `tests/test_generator.py`:
+
+```python
+from drw.generator import WorkflowGenerator
+from drw.providers.fake import FakeLLMProvider
+
+
+def test_generator_returns_valid_workflow_for_observability_goal():
+    generator = WorkflowGenerator(provider=FakeLLMProvider())
+
+    workflow = generator.generate("pesquise frameworks python de observabilidade")
+
+    assert workflow.name == "research_workflow"
+    assert workflow.objective == "pesquise frameworks python de observabilidade"
+    assert workflow.steps[0].type == "parallel_research"
+    assert workflow.steps[-1].type == "report"
+```
+
+- [ ] **Step 2: Run tests to verify failure**
+
+Run: `pytest tests/test_generator.py -v`
+
+Expected: FAIL because `drw.generator` does not exist yet.
+
+- [ ] **Step 3: Extend generator tests for policy clamping**
 
 Append to `tests/test_generator.py`:
 
@@ -752,9 +784,18 @@ def main() -> None:
     print(workflow.model_dump_json(indent=2))
 ```
 
-- [ ] **Step 2: Run CLI smoke command**
+- [ ] **Step 2: Add CLI script entrypoint**
 
-Run: `python -m drw.cli "pesquise frameworks python de observabilidade"`
+Add to `pyproject.toml` now that `src/drw/cli.py` exists:
+
+```toml
+[project.scripts]
+drw = "drw.cli:main"
+```
+
+- [ ] **Step 3: Run CLI smoke command**
+
+Run: `PYTHONPATH=src python -m drw.cli "pesquise frameworks python de observabilidade"`
 
 Expected: JSON with `name` as `research_workflow`, `objective` as the input text, and steps ending in `report`.
 
@@ -777,7 +818,7 @@ Expected: PASS with no lint errors.
 
 - [ ] **Step 3: Run CLI smoke command again**
 
-Run: `python -m drw.cli "pesquise frameworks python de observabilidade"`
+Run: `PYTHONPATH=src python -m drw.cli "pesquise frameworks python de observabilidade"`
 
 Expected: valid JSON output.
 
