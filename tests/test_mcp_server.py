@@ -132,6 +132,21 @@ def test_mcp_lists_and_reads_run_artifacts(tmp_path):
     assert artifact["artifact"]["step_id"] == "research"
 
 
+def test_run_workflow_writes_generated_step_content(tmp_path):
+    payload = run_workflow(
+        "pesquise frameworks python de observabilidade",
+        artifact_dir=str(tmp_path),
+    )
+    run_id = payload["run"]["run_id"]
+
+    artifact = read_artifact(run_id, "research", artifact_dir=str(tmp_path))
+
+    assert artifact["status"] == "ok"
+    assert artifact["artifact"]["content"]
+    assert artifact["artifact"]["findings"]
+    assert artifact["artifact"]["next_actions"]
+
+
 def test_get_run_returns_error_when_run_is_missing(tmp_path):
     payload = get_run("missing-run", artifact_dir=str(tmp_path))
 

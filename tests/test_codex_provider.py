@@ -1,7 +1,9 @@
 import pytest
 
 from drw.command import CommandExecutionError, CommandResult
+from drw.models.workflow import Step
 from drw.providers.codex import CodexProvider, CodexProviderError, _workflow_output_schema
+from drw.runtime import StepResult, StepStatus
 from drw.templates import WorkflowTemplateName, get_template
 
 
@@ -100,3 +102,33 @@ def test_workflow_output_schema_requires_nested_default_fields():
     assert set(retry_schema["required"]) == set(retry_schema["properties"])
     assert config_schema["additionalProperties"] is False
     assert "analysis" not in step_schema["properties"]["type"]["enum"]
+
+
+def test_codex_provider_executes_step_from_structured_json():
+    template = get_template(WorkflowTemplateName.RESEARCH)
+    runner = FakeRunner(
+        CommandResult(
+            args=("codex",),
+            returncode=0,
+            stdout=(
+                '{"content":"conteudo gerado","findings":["achado"],'
+                '"risks":["risco"],"next_actions":["acao"]}'
+            ),
+            stderr="",
+        )
+    )
+    provider = CodexProvider(runner=runner)
+
+    output = provider.execute_step(
+        workflow=template,
+        step=Step(id="research", type="parallel_research"),
+        results_by_step={
+            "previous": StepResult(step_id="previous", status=StepStatus.SUCCESS)
+        },
+    )
+
+    assert output["content"] == "conteudo gerado"
+    assert output["findings"] == ["achado"]
+    assert output["risks"] == ["risco"]
+    assert output["next_actions"] == ["acao"]
+    assert "--output-schema" in runner.calls[0]["args"]

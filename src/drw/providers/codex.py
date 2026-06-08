@@ -5,7 +5,8 @@ from tempfile import TemporaryDirectory
 from pydantic import ValidationError
 
 from drw.command import SubprocessCommandRunner
-from drw.models.workflow import Workflow
+from drw.models.workflow import Step, Workflow
+from drw.runtime import StepResult
 
 
 class CodexProviderError(RuntimeError):
@@ -47,6 +48,47 @@ class CodexProvider:
 
         return _parse_workflow(raw_output)
 
+    def execute_step(
+        self,
+        workflow: Workflow,
+        step: Step,
+        results_by_step: dict[str, StepResult],
+    ) -> dict:
+        prompt = _build_step_prompt(workflow, step, results_by_step)
+        with TemporaryDirectory(prefix="drw-codex-step-") as tmp_dir:
+            output_path = Path(tmp_dir) / "last-message.json"
+            schema_path = Path(tmp_dir) / "step-output-schema.json"
+            schema_path.write_text(
+                json.dumps(_step_output_schema()),
+                encoding="utf-8",
+            )
+            result = self._runner.run(
+                [
+                    *self._command,
+                    "--output-schema",
+                    str(schema_path),
+                    "--output-last-message",
+                    str(output_path),
+                    prompt,
+                ],
+                timeout_seconds=self._timeout_seconds,
+            )
+            raw_output = output_path.read_text(encoding="utf-8") or result.stdout
+
+        output = json.loads(raw_output)
+        return {
+            "workflow": workflow.name,
+            "objective": workflow.objective,
+            "step_id": step.id,
+            "step_type": step.type,
+            "dependencies": step.depends_on,
+            "dependency_statuses": {
+                dependency: results_by_step[dependency].status
+                for dependency in step.depends_on
+            },
+            **output,
+        }
+
 
 def _build_prompt(goal: str, template: Workflow) -> str:
     return (
@@ -54,6 +96,26 @@ def _build_prompt(goal: str, template: Workflow) -> str:
         "Return only valid JSON matching the Workflow schema.\n\n"
         f"Goal:\n{goal}\n\n"
         f"Template JSON:\n{template.model_dump_json()}"
+    )
+
+
+def _build_step_prompt(
+    workflow: Workflow,
+    step: Step,
+    results_by_step: dict[str, StepResult],
+) -> str:
+    dependency_outputs = {
+        dependency: results_by_step[dependency].output
+        for dependency in step.depends_on
+    }
+    return (
+        "Execute this DRW workflow step. Return only valid JSON matching the "
+        "step output schema. Be concise, actionable, and write in the user's "
+        "language when clear from the objective.\n\n"
+        f"Workflow name:\n{workflow.name}\n\n"
+        f"Workflow objective:\n{workflow.objective}\n\n"
+        f"Step JSON:\n{step.model_dump_json()}\n\n"
+        f"Dependency outputs JSON:\n{json.dumps(dependency_outputs, default=str)}"
     )
 
 
@@ -124,6 +186,20 @@ def _workflow_output_schema() -> dict:
             "steps": {"type": "array", "minItems": 1, "items": step},
         },
         "required": ["name", "objective", "policy", "steps"],
+    }
+
+
+def _step_output_schema() -> dict:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "content": {"type": "string", "minLength": 1},
+            "findings": {"type": "array", "items": {"type": "string"}},
+            "risks": {"type": "array", "items": {"type": "string"}},
+            "next_actions": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["content", "findings", "risks", "next_actions"],
     }
 
 

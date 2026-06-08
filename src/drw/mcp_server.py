@@ -54,10 +54,14 @@ def run_workflow(
         return {"status": "error", "error": "goal must not be empty"}
 
     try:
-        generator = WorkflowGenerator(provider=build_provider(provider))
+        selected_provider = build_provider(provider)
+        generator = WorkflowGenerator(provider=selected_provider)
         workflow = generator.generate(goal)
         artifact_store = LocalArtifactStore(_artifact_dir(artifact_dir))
-        runtime = WorkflowRuntime(artifact_store=artifact_store)
+        runtime = WorkflowRuntime(
+            artifact_store=artifact_store,
+            handlers=_step_handlers(selected_provider, workflow),
+        )
         result = runtime.run(workflow, run_id=f"run-{uuid4().hex}")
         artifact_store.write_run_result(result.run_id, result.model_dump(mode="json"))
     except Exception as exc:
@@ -138,3 +142,14 @@ def main() -> None:
 
 def _artifact_dir(artifact_dir: str | None) -> str:
     return artifact_dir or DRWConfig.from_env().artifact_dir
+
+
+def _step_handlers(provider: LLMProvider, workflow) -> dict:
+    return {
+        step.id: lambda current_workflow, current_step, results_by_step: provider.execute_step(
+            current_workflow,
+            current_step,
+            results_by_step,
+        )
+        for step in workflow.steps
+    }
