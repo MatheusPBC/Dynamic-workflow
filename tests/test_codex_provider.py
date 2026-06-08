@@ -93,8 +93,10 @@ def test_workflow_output_schema_requires_nested_default_fields():
     step_schema = schema["properties"]["steps"]["items"]
     retry_schema = step_schema["properties"]["retry_policy"]
     policy_schema = schema["properties"]["policy"]
+    config_schema = step_schema["properties"]["config"]
 
     assert set(policy_schema["required"]) == set(policy_schema["properties"])
     assert set(step_schema["required"]) == set(step_schema["properties"])
     assert set(retry_schema["required"]) == set(retry_schema["properties"])
+    assert config_schema["additionalProperties"] is False
     assert "analysis" not in step_schema["properties"]["type"]["enum"]

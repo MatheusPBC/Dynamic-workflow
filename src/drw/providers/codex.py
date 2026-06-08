@@ -100,7 +100,12 @@ def _workflow_output_schema() -> dict:
                     "cli_agent_task",
                 ],
             },
-            "config": {"type": "object"},
+            "config": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {},
+                "required": [],
+            },
             "depends_on": {"type": "array", "items": {"type": "string"}},
             "concurrency": {"type": "integer", "minimum": 1, "maximum": 8},
             "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 900},
