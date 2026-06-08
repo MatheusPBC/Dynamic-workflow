@@ -1,7 +1,7 @@
 import pytest
 
 from drw.command import CommandExecutionError, CommandResult
-from drw.providers.codex import CodexProvider, CodexProviderError
+from drw.providers.codex import CodexProvider, CodexProviderError, _workflow_output_schema
 from drw.templates import WorkflowTemplateName, get_template
 
 
@@ -85,3 +85,16 @@ def test_codex_provider_propagates_command_errors():
 
     assert exc_info.value.result.returncode == 2
     assert exc_info.value.result.stderr == "bad auth"
+
+
+def test_workflow_output_schema_requires_nested_default_fields():
+    schema = _workflow_output_schema()
+
+    step_schema = schema["properties"]["steps"]["items"]
+    retry_schema = step_schema["properties"]["retry_policy"]
+    policy_schema = schema["properties"]["policy"]
+
+    assert set(policy_schema["required"]) == set(policy_schema["properties"])
+    assert set(step_schema["required"]) == set(step_schema["properties"])
+    assert set(retry_schema["required"]) == set(retry_schema["properties"])
+    assert "analysis" not in step_schema["properties"]["type"]["enum"]
