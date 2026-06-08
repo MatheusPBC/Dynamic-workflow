@@ -74,3 +74,15 @@ New MCP tool:
 
 The tool accepts an `artifact_dir` parameter and writes successful step outputs as local JSON files.
 It defaults to the fake provider and does not call real Codex, Docker, VPS, database, queues, or remote storage.
+
+## Milestone 6
+
+Milestone 6 adds a local run registry and MCP artifact inspection tools.
+
+New MCP tools:
+
+- `get_run`: reads the stored run result by `run_id`.
+- `list_run_artifacts`: lists step artifact IDs for a run.
+- `read_artifact`: reads one step artifact by `run_id` and `step_id`.
+
+Run metadata is stored as `run.json` in the local artifact directory. This remains filesystem-only and does not use a database, Docker, VPS, remote storage, or real Codex calls by default.

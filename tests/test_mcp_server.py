@@ -1,6 +1,14 @@
 import pytest
 
-from drw.mcp_server import build_provider, generate_workflow, health, run_workflow
+from drw.mcp_server import (
+    build_provider,
+    generate_workflow,
+    get_run,
+    health,
+    list_run_artifacts,
+    read_artifact,
+    run_workflow,
+)
 from drw.providers.codex import CodexProvider
 from drw.providers.fake import FakeLLMProvider
 
@@ -63,6 +71,49 @@ def test_run_workflow_generates_and_runs_local_workflow(tmp_path):
     assert run["workflow_name"] == "research_workflow"
     assert run["steps"][0]["status"] == "success"
     assert (tmp_path / run["run_id"] / "research.json").exists()
+
+
+def test_run_workflow_saves_run_for_later_mcp_lookup(tmp_path):
+    payload = run_workflow(
+        "pesquise frameworks python de observabilidade",
+        artifact_dir=str(tmp_path),
+    )
+    run_id = payload["run"]["run_id"]
+
+    lookup = get_run(run_id, artifact_dir=str(tmp_path))
+
+    assert lookup["status"] == "ok"
+    assert lookup["run"]["run_id"] == run_id
+    assert lookup["run"]["workflow_name"] == "research_workflow"
+
+
+def test_mcp_lists_and_reads_run_artifacts(tmp_path):
+    payload = run_workflow(
+        "pesquise frameworks python de observabilidade",
+        artifact_dir=str(tmp_path),
+    )
+    run_id = payload["run"]["run_id"]
+
+    artifacts = list_run_artifacts(run_id, artifact_dir=str(tmp_path))
+    artifact = read_artifact(run_id, "research", artifact_dir=str(tmp_path))
+
+    assert artifacts == {"status": "ok", "artifacts": [
+        "aggregate",
+        "critic_research",
+        "refine_research",
+        "report",
+        "research",
+        "verify_research",
+    ]}
+    assert artifact["status"] == "ok"
+    assert artifact["artifact"]["step_id"] == "research"
+
+
+def test_get_run_returns_error_when_run_is_missing(tmp_path):
+    payload = get_run("missing-run", artifact_dir=str(tmp_path))
+
+    assert payload["status"] == "error"
+    assert "not found" in payload["error"]
 
 
 def test_run_workflow_rejects_empty_goal(tmp_path):
