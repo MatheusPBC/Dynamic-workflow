@@ -13,3 +13,13 @@ This milestone validates the core workflow-generation contract:
 - validate the final workflow.
 
 No MCP, Codex CLI, Docker, database, or deployment is included in this milestone.
+
+## Milestone 2
+
+Milestone 2 adds a real CLI-backed provider boundary:
+
+- `SubprocessCommandRunner` captures stdout, stderr, return code, and timeouts.
+- `CodexProvider` adapts workflow templates from Codex CLI JSON output.
+- Automated tests use fake runners and do not call Codex, OAuth, network, Docker, or VPS.
+
+Manual smoke with real Codex is intentionally separate from the test suite.

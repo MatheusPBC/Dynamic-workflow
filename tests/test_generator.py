@@ -40,3 +40,25 @@ def test_validate_workflow_rejects_missing_dependency():
 
     with pytest.raises(ValueError, match="depends on missing step"):
         validate_workflow(workflow)
+
+
+class RecordingProvider:
+    def __init__(self):
+        self.seen_goal = None
+        self.seen_template_name = None
+
+    def adapt_template(self, goal, template):
+        self.seen_goal = goal
+        self.seen_template_name = template.name
+        return template.model_copy(update={"objective": goal}, deep=True)
+
+
+def test_generator_uses_injected_provider_contract():
+    provider = RecordingProvider()
+    generator = WorkflowGenerator(provider=provider)
+
+    workflow = generator.generate("pesquise frameworks python de observabilidade")
+
+    assert provider.seen_goal == "pesquise frameworks python de observabilidade"
+    assert provider.seen_template_name == "research_workflow"
+    assert workflow.objective == "pesquise frameworks python de observabilidade"
