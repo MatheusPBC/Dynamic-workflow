@@ -1,0 +1,21 @@
+[Unit]
+Description=Dynamic Research Workflows MCP Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=drw
+Group=drw
+WorkingDirectory=/opt/drw
+EnvironmentFile=/etc/drw/drw.env
+ExecStart=/opt/drw/.venv/bin/drw-mcp
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/drw
+
+[Install]
+WantedBy=multi-user.target

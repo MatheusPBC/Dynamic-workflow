@@ -86,3 +86,30 @@ New MCP tools:
 - `read_artifact`: reads one step artifact by `run_id` and `step_id`.
 
 Run metadata is stored as `run.json` in the local artifact directory. This remains filesystem-only and does not use a database, Docker, VPS, remote storage, or real Codex calls by default.
+
+## V1 Operable
+
+V1 makes the local MCP/runtime deployable as a private service.
+
+Configuration:
+
+- `DRW_PROVIDER`: defaults to `fake`; set `codex` only for manual smoke with Codex CLI auth.
+- `DRW_ARTIFACT_DIR`: defaults to `.drw-artifacts`.
+- `DRW_MCP_HOST`: defaults to `127.0.0.1`.
+- `DRW_MCP_PORT`: defaults to `8765`.
+
+Operational MCP tools:
+
+- `get_runtime_status`
+- `run_workflow`
+- `get_run`
+- `list_run_artifacts`
+- `read_artifact`
+
+Private deploy artifacts live under `deploy/`:
+
+- `deploy/drw.env.example`
+- `deploy/systemd/drw-mcp.service`
+- `deploy/README.md`
+
+Manual Codex smoke is documented in `deploy/README.md` and intentionally excluded from automated tests.

@@ -4,6 +4,7 @@ from drw.mcp_server import (
     build_provider,
     generate_workflow,
     get_run,
+    get_runtime_status,
     health,
     list_run_artifacts,
     read_artifact,
@@ -73,6 +74,16 @@ def test_run_workflow_generates_and_runs_local_workflow(tmp_path):
     assert (tmp_path / run["run_id"] / "research.json").exists()
 
 
+def test_run_workflow_uses_configured_artifact_dir_by_default(tmp_path, monkeypatch):
+    monkeypatch.setenv("DRW_ARTIFACT_DIR", str(tmp_path))
+
+    payload = run_workflow("pesquise frameworks python de observabilidade")
+    run = payload["run"]
+
+    assert payload["status"] == "ok"
+    assert (tmp_path / run["run_id"] / "run.json").exists()
+
+
 def test_run_workflow_saves_run_for_later_mcp_lookup(tmp_path):
     payload = run_workflow(
         "pesquise frameworks python de observabilidade",
@@ -114,6 +125,39 @@ def test_get_run_returns_error_when_run_is_missing(tmp_path):
 
     assert payload["status"] == "error"
     assert "not found" in payload["error"]
+
+
+def test_get_runtime_status_returns_config_and_storage_health(tmp_path, monkeypatch):
+    monkeypatch.setenv("DRW_PROVIDER", "fake")
+    monkeypatch.setenv("DRW_ARTIFACT_DIR", str(tmp_path))
+    monkeypatch.setenv("DRW_MCP_HOST", "127.0.0.1")
+    monkeypatch.setenv("DRW_MCP_PORT", "8765")
+
+    payload = get_runtime_status()
+
+    assert payload == {
+        "status": "ok",
+        "provider": "fake",
+        "artifact_dir": str(tmp_path),
+        "mcp_host": "127.0.0.1",
+        "mcp_port": 8765,
+        "storage": "ok",
+    }
+
+
+def test_run_lookup_tools_reject_empty_inputs(tmp_path):
+    assert get_run("", artifact_dir=str(tmp_path)) == {
+        "status": "error",
+        "error": "run_id must not be empty",
+    }
+    assert list_run_artifacts("", artifact_dir=str(tmp_path)) == {
+        "status": "error",
+        "error": "run_id must not be empty",
+    }
+    assert read_artifact("run-1", "", artifact_dir=str(tmp_path)) == {
+        "status": "error",
+        "error": "step_id must not be empty",
+    }
 
 
 def test_run_workflow_rejects_empty_goal(tmp_path):
