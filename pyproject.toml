@@ -4,11 +4,13 @@ version = "0.1.0"
 description = "Dynamic Research Workflows"
 requires-python = ">=3.13"
 dependencies = [
+  "fastmcp>=2.0.0",
   "pydantic>=2.10.0"
 ]
 
 [project.scripts]
 drw = "drw.cli:main"
+drw-mcp = "drw.mcp_server:main"
 
 [project.optional-dependencies]
 dev = [
