@@ -1,6 +1,6 @@
 import pytest
 
-from drw.mcp_server import build_provider, generate_workflow, health
+from drw.mcp_server import build_provider, generate_workflow, health, run_workflow
 from drw.providers.codex import CodexProvider
 from drw.providers.fake import FakeLLMProvider
 
@@ -46,6 +46,38 @@ def test_generate_workflow_rejects_empty_goal():
 
 def test_generate_workflow_returns_error_for_unknown_provider():
     payload = generate_workflow("pesquise frameworks python", provider="hermes")
+
+    assert payload["status"] == "error"
+    assert "Unsupported provider" in payload["error"]
+
+
+def test_run_workflow_generates_and_runs_local_workflow(tmp_path):
+    payload = run_workflow(
+        "pesquise frameworks python de observabilidade",
+        artifact_dir=str(tmp_path),
+    )
+    run = payload["run"]
+
+    assert payload["status"] == "ok"
+    assert run["status"] == "success"
+    assert run["workflow_name"] == "research_workflow"
+    assert run["steps"][0]["status"] == "success"
+    assert (tmp_path / run["run_id"] / "research.json").exists()
+
+
+def test_run_workflow_rejects_empty_goal(tmp_path):
+    payload = run_workflow("", artifact_dir=str(tmp_path))
+
+    assert payload["status"] == "error"
+    assert payload["error"] == "goal must not be empty"
+
+
+def test_run_workflow_returns_error_for_unknown_provider(tmp_path):
+    payload = run_workflow(
+        "pesquise frameworks python",
+        provider="hermes",
+        artifact_dir=str(tmp_path),
+    )
 
     assert payload["status"] == "error"
     assert "Unsupported provider" in payload["error"]
