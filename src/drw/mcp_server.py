@@ -55,12 +55,48 @@ def run_workflow(
     try:
         generator = WorkflowGenerator(provider=build_provider(provider))
         workflow = generator.generate(goal)
-        runtime = WorkflowRuntime(artifact_store=LocalArtifactStore(artifact_dir))
+        artifact_store = LocalArtifactStore(artifact_dir)
+        runtime = WorkflowRuntime(artifact_store=artifact_store)
         result = runtime.run(workflow, run_id=f"run-{uuid4().hex}")
+        artifact_store.write_run_result(result.run_id, result.model_dump(mode="json"))
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
     return {"status": "ok", "run": result.model_dump(mode="json")}
+
+
+@mcp.tool
+def get_run(run_id: str, artifact_dir: str = ".drw-artifacts") -> dict[str, Any]:
+    try:
+        run = LocalArtifactStore(artifact_dir).read_run_result(run_id)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+    return {"status": "ok", "run": run}
+
+
+@mcp.tool
+def list_run_artifacts(run_id: str, artifact_dir: str = ".drw-artifacts") -> dict[str, Any]:
+    try:
+        artifacts = LocalArtifactStore(artifact_dir).list_step_artifacts(run_id)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+    return {"status": "ok", "artifacts": artifacts}
+
+
+@mcp.tool
+def read_artifact(
+    run_id: str,
+    step_id: str,
+    artifact_dir: str = ".drw-artifacts",
+) -> dict[str, Any]:
+    try:
+        artifact = LocalArtifactStore(artifact_dir).read_step_artifact(run_id, step_id)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+    return {"status": "ok", "artifact": artifact}
 
 
 def main() -> None:
