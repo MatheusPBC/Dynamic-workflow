@@ -16,11 +16,12 @@ mcp = FastMCP("DRW")
 
 
 def build_provider(provider_name: str | None = None) -> LLMProvider:
-    selected = (provider_name or DRWConfig.from_env().provider).lower()
+    config = DRWConfig.from_env()
+    selected = (provider_name or config.provider).lower()
     if selected == "fake":
         return FakeLLMProvider()
     if selected == "codex":
-        return CodexProvider()
+        return CodexProvider(timeout_seconds=config.codex_timeout_seconds)
     raise ValueError(f"Unsupported provider: {selected}")
 
 
@@ -125,6 +126,7 @@ def get_runtime_status() -> dict[str, Any]:
         "artifact_dir": config.artifact_dir,
         "mcp_host": config.mcp_host,
         "mcp_port": config.mcp_port,
+        "codex_timeout_seconds": config.codex_timeout_seconds,
         "storage": storage,
     }
 
